@@ -21,26 +21,32 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Find pom.xml
-        id: find-pom
+      - name: Extract source ZIP
         run: |
-          POM=$(find . -type f -name pom.xml -not -path './.git/*' | head -n 1)
+          ZIP=$(find . -maxdepth 1 -name '*Source.zip' | head -n 1)
 
-          if [ -z "$POM" ]; then
-            echo "ERROR: pom.xml tidak ditemukan!"
-            echo "Pastikan source plugin sudah di-upload ke repository."
+          if [ -z "$ZIP" ]; then
+            echo "Source ZIP tidak ditemukan!"
             exit 1
           fi
 
-          echo "POM_PATH=$POM" >> "$GITHUB_ENV"
-          echo "Ditemukan: $POM"
+          mkdir -p source
+          unzip -o "$ZIP" -d source
 
       - name: Build plugin
-        run: mvn -B -f "$POM_PATH" clean package
+        run: |
+          POM=$(find source -name pom.xml | head -n 1)
+
+          if [ -z "$POM" ]; then
+            echo "pom.xml tidak ditemukan!"
+            exit 1
+          fi
+
+          mvn -B -f "$POM" clean package
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: DeathDimension-V2.1
-          path: '**/target/*.jar'
+          path: source/**/target/*.jar
           if-no-files-found: error
